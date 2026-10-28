@@ -1,0 +1,8 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-pptx>=0.6.21
+lxml>=4.9
+Pillow>=10.0
+requests>=2.31
+uharfbuzz>=0.50.0
+skia-pathops>=0.9.2
