@@ -271,12 +271,20 @@ def build_pptx(topic: str, audience: str, pages: int, style: str, api_key: str,
     slides = deck["slides"]
     total = len(slides)
 
-    # 并发生成所有页
+    # 并发生成所有页。
+    # 并发度受内存约束：每页要起一个子进程跑质检，512 MB 的免费实例上
+    # 超过 2 个并发就有 OOM 风险。可用 PPT_WORKERS 覆盖（本地可调高）。
     jobs = [(i + 1, total, s, palette, api_key) for i, s in enumerate(slides)]
     results: dict[int, str] = {}
     failed: dict[int, list[str]] = {}
 
-    with futures.ThreadPoolExecutor(max_workers=min(6, total)) as pool:
+    try:
+        workers = int(os.environ.get("PPT_WORKERS", "2"))
+    except ValueError:
+        workers = 2
+    workers = max(1, min(workers, 8, total))
+
+    with futures.ThreadPoolExecutor(max_workers=workers) as pool:
         for index, svg, errs in pool.map(_one_page, jobs):
             if svg:
                 results[index] = svg
