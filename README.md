@@ -1,3 +1,13 @@
+---
+title: PPT Master Service
+emoji: 📊
+colorFrom: green
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # PPT Master 生成服务 · 部署指南
 
 把 ppt-master 的 SVG→PPTX 转换能力放到公网，供网站调用。
@@ -6,7 +16,7 @@
 
 ```
 浏览器 → Cloudflare Worker（/api/ppt-build）
-             → Render 上的本服务（FastAPI + ppt-master）
+             → Hugging Face Space（FastAPI + ppt-master）
                   ├─ 调 DeepSeek 写每页 SVG
                   ├─ 跑 svg_quality_checker 质检
                   ├─ 失败自动修复（最多 2 轮）
@@ -35,7 +45,76 @@ uvicorn app:app --port 8000
 
 ---
 
-## 二、部署到 Render（免费层）
+## 二、部署到 Hugging Face Spaces（免费，不需要信用卡）
+
+### 1. 注册并创建 Token
+
+1. 注册 <https://huggingface.co/join>
+2. 打开 <https://huggingface.co/settings/tokens>
+3. 点 **New token** → Type 选 **Write** → 名字随便写 → 复制生成的 `hf_...`
+
+### 2. 创建 Space
+
+打开 <https://huggingface.co/new-space>：
+
+| 字段 | 填什么 |
+|---|---|
+| Owner | 你的账号 |
+| Space name | `ppt-master-service` |
+| License | 随便 |
+| **Select the Space SDK** | **Docker** |
+| Docker template | **Blank** |
+| Space hardware | **CPU basic · 2 vCPU · 16GB · FREE** |
+| Visibility | **Private**（或 Public） |
+
+点 **Create Space**。
+
+### 3. 推代码到 Space
+
+```bash
+cd ppt-service
+git remote add hf https://huggingface.co/spaces/你的HF用户名/ppt-master-service
+git push hf main
+```
+
+推送时会要求输入用户名和密码：
+
+- **用户名**：你的 HF 用户名
+- **密码**：粘贴刚才那个 `hf_...` Token（不是账号密码）
+
+> 如果证书报错（代理环境常见），加一次性的 `-c http.sslVerify=false`。
+
+### 4. 配置环境变量
+
+在 Space 页面：**Settings** → **Variables and secrets** → **New secret**，加两条：
+
+| Name | Value |
+|---|---|
+| `DEEPSEEK_API_KEY` | 你的 `sk-...` |
+| `SERVICE_TOKEN` | 自己编，比如 `ppt-2026-abc123` |
+
+加完后 Space 会自动重启。
+
+### 5. 拿到服务地址
+
+Space 的访问地址格式固定：
+
+```
+https://你的HF用户名-ppt-master-service.hf.space
+```
+
+测一下：
+
+```bash
+curl https://你的地址.hf.space/api/health
+# 应返回 {"ok":true,"has_key":true,"skill":true}
+```
+
+---
+
+## 二·备选：部署到 Render（需要绑信用卡）
+
+> 2026 年起 Render 免费层也要验证支付方式，以下仅在你愿意绑卡时使用。
 
 ### 1. 把服务推到 GitHub
 
